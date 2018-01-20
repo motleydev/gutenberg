@@ -10,6 +10,8 @@ import {
 	mapValues,
 	sortBy,
 	throttle,
+	get,
+	last,
 } from 'lodash';
 import scrollIntoView from 'dom-scroll-into-view';
 import 'element-closest';
@@ -18,15 +20,15 @@ import 'element-closest';
  * WordPress dependencies
  */
 import { Component } from '@wordpress/element';
-import { serialize } from '@wordpress/blocks';
+import { serialize, getDefaultBlockName } from '@wordpress/blocks';
 
 /**
  * Internal dependencies
  */
 import './style.scss';
 import BlockListBlock from './block';
+import DefaultBlockAppender from '../default-block-appender';
 import {
-	getBlockUids,
 	getMultiSelectedBlocksStartUid,
 	getMultiSelectedBlocksEndUid,
 	getMultiSelectedBlocks,
@@ -38,7 +40,7 @@ import {
 import { startMultiSelect, stopMultiSelect, multiSelect, selectBlock } from '../../store/actions';
 import { documentHasSelection } from '../../utils/dom';
 
-class BlockList extends Component {
+class BlockListLayout extends Component {
 	constructor( props ) {
 		super( props );
 
@@ -244,21 +246,47 @@ class BlockList extends Component {
 	}
 
 	render() {
-		const { blocks, showContextualToolbar, renderBlockMenu } = this.props;
+		const {
+			blocks,
+			showContextualToolbar,
+			layout,
+			isGroupedByLayout,
+			rootUID,
+			renderBlockMenu,
+		} = this.props;
+
+		let defaultLayout;
+		if ( isGroupedByLayout ) {
+			defaultLayout = layout;
+		}
+
+		const isLastBlockDefault = get( last( blocks ), 'name' ) === getDefaultBlockName();
 
 		return (
-			<div>
-				{ map( blocks, ( uid ) => (
+			<div className={ 'layout-' + layout }>
+				{ map( blocks, ( block, blockIndex ) => (
 					<BlockListBlock
-						key={ 'block-' + uid }
-						uid={ uid }
+						key={ 'block-' + block.uid }
+						index={ blockIndex }
+						uid={ block.uid }
 						blockRef={ this.setBlockRef }
 						onSelectionStart={ this.onSelectionStart }
 						onShiftSelection={ this.onShiftSelection }
 						showContextualToolbar={ showContextualToolbar }
+						rootUID={ rootUID }
+						layout={ defaultLayout }
+						isFirst={ blockIndex === 0 }
+						isLast={ blockIndex === blocks.length - 1 }
 						renderBlockMenu={ renderBlockMenu }
 					/>
 				) ) }
+				{ ( ! blocks.length || ! isLastBlockDefault ) && (
+					<DefaultBlockAppender
+						rootUID={ rootUID }
+						layout={ defaultLayout }
+						showPrompt={ ! blocks.length }
+					/>
+				) }
 			</div>
 		);
 	}
@@ -266,7 +294,6 @@ class BlockList extends Component {
 
 export default connect(
 	( state ) => ( {
-		blocks: getBlockUids( state ),
 		selectionStart: getMultiSelectedBlocksStartUid( state ),
 		selectionEnd: getMultiSelectedBlocksEndUid( state ),
 		multiSelectedBlocks: getMultiSelectedBlocks( state ),
@@ -292,4 +319,4 @@ export default connect(
 			dispatch( { type: 'REMOVE_BLOCKS', uids } );
 		},
 	} )
-)( BlockList );
+)( BlockListLayout );

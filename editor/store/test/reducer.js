@@ -12,6 +12,7 @@ import {
 	registerBlockType,
 	unregisterBlockType,
 	getBlockType,
+	createBlock,
 } from '@wordpress/blocks';
 
 /**
@@ -76,20 +77,41 @@ describe( 'state', () => {
 			expect( state.future ).toEqual( [] );
 			expect( state.present.edits ).toEqual( {} );
 			expect( state.present.blocksByUid ).toEqual( {} );
-			expect( state.present.blockOrder ).toEqual( [] );
+			expect( state.present.blockOrder ).toEqual( {} );
 			expect( state.isDirty ).toBe( false );
 		} );
 
-		it( 'should key by replaced blocks uid', () => {
+		it( 'should key by reset blocks uid', () => {
 			const original = editor( undefined, {} );
 			const state = editor( original, {
 				type: 'RESET_BLOCKS',
-				blocks: [ { uid: 'bananas' } ],
+				blocks: [ { uid: 'bananas', innerBlocks: [] } ],
 			} );
 
 			expect( Object.keys( state.present.blocksByUid ) ).toHaveLength( 1 );
 			expect( values( state.present.blocksByUid )[ 0 ].uid ).toBe( 'bananas' );
-			expect( state.present.blockOrder ).toEqual( [ 'bananas' ] );
+			expect( state.present.blockOrder ).toEqual( {
+				'': [ 'bananas' ],
+				bananas: [],
+			} );
+		} );
+
+		it( 'should key by reset blocks uid, including inner blocks', () => {
+			const original = editor( undefined, {} );
+			const state = editor( original, {
+				type: 'RESET_BLOCKS',
+				blocks: [ {
+					uid: 'bananas',
+					innerBlocks: [ { uid: 'apples', innerBlocks: [] } ],
+				} ],
+			} );
+
+			expect( Object.keys( state.present.blocksByUid ) ).toHaveLength( 2 );
+			expect( state.present.blockOrder ).toEqual( {
+				'': [ 'bananas' ],
+				apples: [],
+				bananas: [ 'apples' ],
+			} );
 		} );
 
 		it( 'should insert block', () => {
@@ -99,6 +121,7 @@ describe( 'state', () => {
 					uid: 'chicken',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				} ],
 			} );
 			const state = editor( original, {
@@ -106,12 +129,17 @@ describe( 'state', () => {
 				blocks: [ {
 					uid: 'ribs',
 					name: 'core/freeform',
+					innerBlocks: [],
 				} ],
 			} );
 
 			expect( Object.keys( state.present.blocksByUid ) ).toHaveLength( 2 );
 			expect( values( state.present.blocksByUid )[ 1 ].uid ).toBe( 'ribs' );
-			expect( state.present.blockOrder ).toEqual( [ 'chicken', 'ribs' ] );
+			expect( state.present.blockOrder ).toEqual( {
+				'': [ 'chicken', 'ribs' ],
+				chicken: [],
+				ribs: [],
+			} );
 		} );
 
 		it( 'should replace the block', () => {
@@ -121,6 +149,7 @@ describe( 'state', () => {
 					uid: 'chicken',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				} ],
 			} );
 			const state = editor( original, {
@@ -129,13 +158,39 @@ describe( 'state', () => {
 				blocks: [ {
 					uid: 'wings',
 					name: 'core/freeform',
+					innerBlocks: [],
 				} ],
 			} );
 
 			expect( Object.keys( state.present.blocksByUid ) ).toHaveLength( 1 );
 			expect( values( state.present.blocksByUid )[ 0 ].name ).toBe( 'core/freeform' );
 			expect( values( state.present.blocksByUid )[ 0 ].uid ).toBe( 'wings' );
-			expect( state.present.blockOrder ).toEqual( [ 'wings' ] );
+			expect( state.present.blockOrder ).toEqual( {
+				'': [ 'wings' ],
+				wings: [],
+			} );
+		} );
+
+		it( 'should replace the nested block', () => {
+			const nestedBlock = createBlock( 'core/test-block' );
+			const wrapperBlock = createBlock( 'core/test-block', {}, [ nestedBlock ] );
+			const replacementBlock = createBlock( 'core/test-block' );
+			const original = editor( undefined, {
+				type: 'RESET_BLOCKS',
+				blocks: [ wrapperBlock ],
+			} );
+
+			const state = editor( original, {
+				type: 'REPLACE_BLOCKS',
+				uids: [ nestedBlock.uid ],
+				blocks: [ replacementBlock ],
+			} );
+
+			expect( state.present.blockOrder ).toEqual( {
+				'': [ wrapperBlock.uid ],
+				[ wrapperBlock.uid ]: [ replacementBlock.uid ],
+				[ replacementBlock.uid ]: [],
+			} );
 		} );
 
 		it( 'should update the block', () => {
@@ -146,6 +201,7 @@ describe( 'state', () => {
 					name: 'core/test-block',
 					attributes: {},
 					isValid: false,
+					innerBlocks: [],
 				} ],
 			} );
 			const state = editor( deepFreeze( original ), {
@@ -175,6 +231,7 @@ describe( 'state', () => {
 						ref: 'random-uid',
 					},
 					isValid: false,
+					innerBlocks: [],
 				} ],
 			} );
 
@@ -201,10 +258,12 @@ describe( 'state', () => {
 					uid: 'chicken',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				}, {
 					uid: 'ribs',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				} ],
 			} );
 			const state = editor( original, {
@@ -212,7 +271,29 @@ describe( 'state', () => {
 				uids: [ 'ribs' ],
 			} );
 
-			expect( state.present.blockOrder ).toEqual( [ 'ribs', 'chicken' ] );
+			expect( state.present.blockOrder[ '' ] ).toEqual( [ 'ribs', 'chicken' ] );
+		} );
+
+		it( 'should move the nested block up', () => {
+			const movedBlock = createBlock( 'core/test-block' );
+			const siblingBlock = createBlock( 'core/test-block' );
+			const wrapperBlock = createBlock( 'core/test-block', {}, [ siblingBlock, movedBlock ] );
+			const original = editor( undefined, {
+				type: 'RESET_BLOCKS',
+				blocks: [ wrapperBlock ],
+			} );
+			const state = editor( original, {
+				type: 'MOVE_BLOCKS_UP',
+				uids: [ movedBlock.uid ],
+				rootUID: wrapperBlock.uid,
+			} );
+
+			expect( state.present.blockOrder ).toEqual( {
+				'': [ wrapperBlock.uid ],
+				[ wrapperBlock.uid ]: [ movedBlock.uid, siblingBlock.uid ],
+				[ movedBlock.uid ]: [],
+				[ siblingBlock.uid ]: [],
+			} );
 		} );
 
 		it( 'should move multiple blocks up', () => {
@@ -222,14 +303,17 @@ describe( 'state', () => {
 					uid: 'chicken',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				}, {
 					uid: 'ribs',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				}, {
 					uid: 'veggies',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				} ],
 			} );
 			const state = editor( original, {
@@ -237,7 +321,31 @@ describe( 'state', () => {
 				uids: [ 'ribs', 'veggies' ],
 			} );
 
-			expect( state.present.blockOrder ).toEqual( [ 'ribs', 'veggies', 'chicken' ] );
+			expect( state.present.blockOrder[ '' ] ).toEqual( [ 'ribs', 'veggies', 'chicken' ] );
+		} );
+
+		it( 'should move multiple nested blocks up', () => {
+			const movedBlockA = createBlock( 'core/test-block' );
+			const movedBlockB = createBlock( 'core/test-block' );
+			const siblingBlock = createBlock( 'core/test-block' );
+			const wrapperBlock = createBlock( 'core/test-block', {}, [ siblingBlock, movedBlockA, movedBlockB ] );
+			const original = editor( undefined, {
+				type: 'RESET_BLOCKS',
+				blocks: [ wrapperBlock ],
+			} );
+			const state = editor( original, {
+				type: 'MOVE_BLOCKS_UP',
+				uids: [ movedBlockA.uid, movedBlockB.uid ],
+				rootUID: wrapperBlock.uid,
+			} );
+
+			expect( state.present.blockOrder ).toEqual( {
+				'': [ wrapperBlock.uid ],
+				[ wrapperBlock.uid ]: [ movedBlockA.uid, movedBlockB.uid, siblingBlock.uid ],
+				[ movedBlockA.uid ]: [],
+				[ movedBlockB.uid ]: [],
+				[ siblingBlock.uid ]: [],
+			} );
 		} );
 
 		it( 'should not move the first block up', () => {
@@ -247,10 +355,12 @@ describe( 'state', () => {
 					uid: 'chicken',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				}, {
 					uid: 'ribs',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				} ],
 			} );
 			const state = editor( original, {
@@ -268,10 +378,12 @@ describe( 'state', () => {
 					uid: 'chicken',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				}, {
 					uid: 'ribs',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				} ],
 			} );
 			const state = editor( original, {
@@ -279,7 +391,29 @@ describe( 'state', () => {
 				uids: [ 'chicken' ],
 			} );
 
-			expect( state.present.blockOrder ).toEqual( [ 'ribs', 'chicken' ] );
+			expect( state.present.blockOrder[ '' ] ).toEqual( [ 'ribs', 'chicken' ] );
+		} );
+
+		it( 'should move the nested block down', () => {
+			const movedBlock = createBlock( 'core/test-block' );
+			const siblingBlock = createBlock( 'core/test-block' );
+			const wrapperBlock = createBlock( 'core/test-block', {}, [ movedBlock, siblingBlock ] );
+			const original = editor( undefined, {
+				type: 'RESET_BLOCKS',
+				blocks: [ wrapperBlock ],
+			} );
+			const state = editor( original, {
+				type: 'MOVE_BLOCKS_DOWN',
+				uids: [ movedBlock.uid ],
+				rootUID: wrapperBlock.uid,
+			} );
+
+			expect( state.present.blockOrder ).toEqual( {
+				'': [ wrapperBlock.uid ],
+				[ wrapperBlock.uid ]: [ siblingBlock.uid, movedBlock.uid ],
+				[ movedBlock.uid ]: [],
+				[ siblingBlock.uid ]: [],
+			} );
 		} );
 
 		it( 'should move multiple blocks down', () => {
@@ -289,14 +423,17 @@ describe( 'state', () => {
 					uid: 'chicken',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				}, {
 					uid: 'ribs',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				}, {
 					uid: 'veggies',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				} ],
 			} );
 			const state = editor( original, {
@@ -304,7 +441,31 @@ describe( 'state', () => {
 				uids: [ 'chicken', 'ribs' ],
 			} );
 
-			expect( state.present.blockOrder ).toEqual( [ 'veggies', 'chicken', 'ribs' ] );
+			expect( state.present.blockOrder[ '' ] ).toEqual( [ 'veggies', 'chicken', 'ribs' ] );
+		} );
+
+		it( 'should move multiple nested blocks down', () => {
+			const movedBlockA = createBlock( 'core/test-block' );
+			const movedBlockB = createBlock( 'core/test-block' );
+			const siblingBlock = createBlock( 'core/test-block' );
+			const wrapperBlock = createBlock( 'core/test-block', {}, [ movedBlockA, movedBlockB, siblingBlock ] );
+			const original = editor( undefined, {
+				type: 'RESET_BLOCKS',
+				blocks: [ wrapperBlock ],
+			} );
+			const state = editor( original, {
+				type: 'MOVE_BLOCKS_DOWN',
+				uids: [ movedBlockA.uid, movedBlockB.uid ],
+				rootUID: wrapperBlock.uid,
+			} );
+
+			expect( state.present.blockOrder ).toEqual( {
+				'': [ wrapperBlock.uid ],
+				[ wrapperBlock.uid ]: [ siblingBlock.uid, movedBlockA.uid, movedBlockB.uid ],
+				[ movedBlockA.uid ]: [],
+				[ movedBlockB.uid ]: [],
+				[ siblingBlock.uid ]: [],
+			} );
 		} );
 
 		it( 'should not move the last block down', () => {
@@ -314,10 +475,12 @@ describe( 'state', () => {
 					uid: 'chicken',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				}, {
 					uid: 'ribs',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				} ],
 			} );
 			const state = editor( original, {
@@ -335,10 +498,12 @@ describe( 'state', () => {
 					uid: 'chicken',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				}, {
 					uid: 'ribs',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				} ],
 			} );
 			const state = editor( original, {
@@ -346,7 +511,8 @@ describe( 'state', () => {
 				uids: [ 'chicken' ],
 			} );
 
-			expect( state.present.blockOrder ).toEqual( [ 'ribs' ] );
+			expect( state.present.blockOrder[ '' ] ).toEqual( [ 'ribs' ] );
+			expect( state.present.blockOrder ).not.toHaveProperty( 'chicken' );
 			expect( state.present.blocksByUid ).toEqual( {
 				ribs: {
 					uid: 'ribs',
@@ -363,14 +529,17 @@ describe( 'state', () => {
 					uid: 'chicken',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				}, {
 					uid: 'ribs',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				}, {
 					uid: 'veggies',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				} ],
 			} );
 			const state = editor( original, {
@@ -378,7 +547,9 @@ describe( 'state', () => {
 				uids: [ 'chicken', 'veggies' ],
 			} );
 
-			expect( state.present.blockOrder ).toEqual( [ 'ribs' ] );
+			expect( state.present.blockOrder[ '' ] ).toEqual( [ 'ribs' ] );
+			expect( state.present.blockOrder ).not.toHaveProperty( 'chicken' );
+			expect( state.present.blockOrder ).not.toHaveProperty( 'veggies' );
 			expect( state.present.blocksByUid ).toEqual( {
 				ribs: {
 					uid: 'ribs',
@@ -388,31 +559,34 @@ describe( 'state', () => {
 			} );
 		} );
 
-		it( 'should insert at the specified position', () => {
+		it( 'should insert at the specified index', () => {
 			const original = editor( undefined, {
 				type: 'RESET_BLOCKS',
 				blocks: [ {
 					uid: 'kumquat',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				}, {
 					uid: 'loquat',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				} ],
 			} );
 
 			const state = editor( original, {
 				type: 'INSERT_BLOCKS',
-				position: 1,
+				index: 1,
 				blocks: [ {
 					uid: 'persimmon',
 					name: 'core/freeform',
+					innerBlocks: [],
 				} ],
 			} );
 
 			expect( Object.keys( state.present.blocksByUid ) ).toHaveLength( 3 );
-			expect( state.present.blockOrder ).toEqual( [ 'kumquat', 'persimmon', 'loquat' ] );
+			expect( state.present.blockOrder[ '' ] ).toEqual( [ 'kumquat', 'persimmon', 'loquat' ] );
 		} );
 
 		it( 'should remove associated blocks when deleting a reusable block', () => {
@@ -422,10 +596,12 @@ describe( 'state', () => {
 					uid: 'chicken',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				}, {
 					uid: 'ribs',
 					name: 'core/test-block',
 					attributes: {},
+					innerBlocks: [],
 				} ],
 			} );
 			const state = editor( original, {
@@ -434,7 +610,7 @@ describe( 'state', () => {
 				associatedBlockUids: [ 'chicken', 'veggies' ],
 			} );
 
-			expect( state.present.blockOrder ).toEqual( [ 'ribs' ] );
+			expect( state.present.blockOrder[ '' ] ).toEqual( [ 'ribs' ] );
 			expect( state.present.blocksByUid ).toEqual( {
 				ribs: {
 					uid: 'ribs',
@@ -547,10 +723,12 @@ describe( 'state', () => {
 						uid: 'kumquat',
 						name: 'core/test-block',
 						attributes: {},
+						innerBlocks: [],
 					}, {
 						uid: 'loquat',
 						name: 'core/test-block',
 						attributes: {},
+						innerBlocks: [],
 					} ],
 				} );
 
@@ -565,6 +743,7 @@ describe( 'state', () => {
 					blocks: [ {
 						uid: 'kumquat',
 						attributes: {},
+						innerBlocks: [],
 					} ],
 				} ) );
 				const state = editor( original, {
@@ -586,6 +765,7 @@ describe( 'state', () => {
 						attributes: {
 							updated: true,
 						},
+						innerBlocks: [],
 					} ],
 				} ) );
 				const state = editor( original, {
@@ -626,6 +806,7 @@ describe( 'state', () => {
 						attributes: {
 							updated: true,
 						},
+						innerBlocks: [],
 					} ],
 				} ) );
 				const state = editor( original, {
@@ -701,6 +882,7 @@ describe( 'state', () => {
 				blocks: [ {
 					uid: 'wings',
 					name: 'core/freeform',
+					innerBlocks: [],
 				} ],
 			} );
 
@@ -714,6 +896,7 @@ describe( 'state', () => {
 				blocks: [ {
 					uid: 'wings',
 					name: 'core/freeform',
+					innerBlocks: [],
 				} ],
 			} );
 
