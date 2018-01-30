@@ -25,7 +25,6 @@ import { serialize } from '@wordpress/blocks';
  */
 import './style.scss';
 import BlockListBlock from './block';
-import BlockInsertionPoint from './insertion-point';
 import {
 	getBlockUids,
 	getMultiSelectedBlocksStartUid,
@@ -249,7 +248,6 @@ class BlockList extends Component {
 
 		return (
 			<div>
-				{ !! blocks.length && <BlockInsertionPoint /> }
 				{ map( blocks, ( uid ) => (
 					<BlockListBlock
 						key={ 'block-' + uid }
