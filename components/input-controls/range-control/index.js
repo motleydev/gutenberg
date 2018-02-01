@@ -1,13 +1,15 @@
 /**
  * WordPress dependencies
  */
-import { Dashicon, withInstanceId, Button } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 
 /**
  * Internal dependencies
  */
 import BaseControl from './../base-control';
+import Button from '../../button';
+import Dashicon from '../../dashicon';
+import withInstanceId from '../../higher-order/with-instance-id';
 import './style.scss';
 
 function RangeControl( { label, value, instanceId, onChange, beforeIcon, afterIcon, help, allowReset, ...props } ) {

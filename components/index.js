@@ -14,6 +14,16 @@ export { default as FormFileUpload } from './form-file-upload';
 export { default as FormToggle } from './form-toggle';
 export { default as FormTokenField } from './form-token-field';
 export { default as IconButton } from './icon-button';
+export {
+	BaseControl,
+	CheckboxControl,
+	RadioControl,
+	RangeControl,
+	SelectControl,
+	TextControl,
+	TextareaControl,
+	ToggleControl,
+} from './input-controls';
 export { default as KeyboardShortcuts } from './keyboard-shortcuts';
 export { default as MenuItemsGroup } from './menu-items/menu-items-group';
 export { default as MenuItemsToggle } from './menu-items/menu-items-toggle';

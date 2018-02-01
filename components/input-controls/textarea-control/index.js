@@ -1,30 +1,27 @@
 /**
- * WordPress dependencies
- */
-import { withInstanceId } from '@wordpress/components';
-
-/**
  * Internal dependencies
  */
 import BaseControl from './../base-control';
+import withInstanceId from '../../higher-order/with-instance-id';
 import './style.scss';
 
-function TextControl( { label, value, help, instanceId, onChange, type = 'text', ...props } ) {
-	const id = 'inspector-text-control-' + instanceId;
+function TextareaControl( { label, value, help, instanceId, onChange, rows = 4, ...props } ) {
+	const id = 'inspector-textarea-control-' + instanceId;
 	const onChangeValue = ( event ) => onChange( event.target.value );
 
 	return (
 		<BaseControl label={ label } id={ id } help={ help }>
-			<input className="blocks-text-control__input"
-				type={ type }
+			<textarea
+				className="blocks-textarea-control__input"
 				id={ id }
-				value={ value }
+				rows={ rows }
 				onChange={ onChangeValue }
 				aria-describedby={ !! help ? id + '__help' : undefined }
+				value={ value }
 				{ ...props }
 			/>
 		</BaseControl>
 	);
 }
 
-export default withInstanceId( TextControl );
+export default withInstanceId( TextareaControl );

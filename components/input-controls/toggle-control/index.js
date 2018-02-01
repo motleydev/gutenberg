@@ -2,7 +2,8 @@
  * WordPress dependencies
  */
 import { Component } from '@wordpress/element';
-import { withInstanceId, FormToggle } from '@wordpress/components';
+import FormToggle from '../../form-toggle';
+import withInstanceId from '../../higher-order/with-instance-id';
 
 /**
  * Internal dependencies
