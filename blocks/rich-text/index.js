@@ -751,13 +751,23 @@ export default class RichText extends Component {
 				// focussed editor into view.
 				// Unfortunately we cannot detect virtual keyboards.
 				if ( window.innerWidth < 784 ) {
-					const rootNode = this.editor.getBody();
+					setTimeout( () => {
+						if ( this.editor.removed ) {
+							return;
+						}
 
-					scrollIntoView( rootNode, rootNode.closest( '.edit-post-layout__content' ), {
-						// Give enough room for toolbar. Must be top.
-						// Unfortunately we cannot scroll to bottom as the
-						// virtual keyboard overlaps the window.
-						offsetTop: 100,
+						const rootNode = this.editor.getBody();
+						const rootRect = rootNode.getBoundingClientRect();
+						const caretRect = this.editor.selection.getRng().getClientRects()[ 0 ];
+						const offset = caretRect ? caretRect.top - rootRect.top : 0;
+
+						scrollIntoView( rootNode, rootNode.closest( '.edit-post-layout__content' ), {
+							// Give enough room for toolbar. Must be top.
+							// Unfortunately we cannot scroll to bottom as the
+							// virtual keyboard overlaps the window.
+							offsetTop: 100 - offset,
+							alignWithTop: true,
+						} );
 					} );
 				}
 			}
