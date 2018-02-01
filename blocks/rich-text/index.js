@@ -22,7 +22,7 @@ import scrollIntoView from 'dom-scroll-into-view';
  * WordPress dependencies
  */
 import { createElement, Component, renderToString } from '@wordpress/element';
-import { keycodes, createBlobURL } from '@wordpress/utils';
+import { keycodes, createBlobURL, getScrollContainer } from '@wordpress/utils';
 import { Slot, Fill } from '@wordpress/components';
 
 /**
@@ -105,6 +105,7 @@ export default class RichText extends Component {
 		this.maybePropagateUndo = this.maybePropagateUndo.bind( this );
 		this.onPastePreProcess = this.onPastePreProcess.bind( this );
 		this.onPaste = this.onPaste.bind( this );
+		this.onTinyMCEMount = this.onTinyMCEMount.bind( this );
 
 		this.state = {
 			formats: {},
@@ -215,6 +216,30 @@ export default class RichText extends Component {
 	}
 
 	onFocus() {
+		// For small screens (virtual keyboard), always scroll the
+		// focussed editor into view.
+		// Unfortunately we cannot detect virtual keyboards.
+		if ( window.innerWidth < 784 ) {
+			setTimeout( () => {
+				if ( this.editor.removed ) {
+					return;
+				}
+
+				const rootNode = this.editor.getBody();
+				const rootRect = rootNode.getBoundingClientRect();
+				const caretRect = this.editor.selection.getRng().getClientRects()[ 0 ];
+				const offset = caretRect ? caretRect.top - rootRect.top : 0;
+
+				scrollIntoView( rootNode, rootNode.closest( '.edit-post-layout__content' ), {
+					// Give enough room for toolbar. Must be top.
+					// Unfortunately we cannot scroll to bottom as the
+					// virtual keyboard overlaps the window.
+					offsetTop: 100 - offset,
+					alignWithTop: true,
+				} );
+			} );
+		}
+
 		if ( ! this.props.onFocus ) {
 			return;
 		}
@@ -746,30 +771,6 @@ export default class RichText extends Component {
 		if ( focus ) {
 			if ( ! isActive ) {
 				this.editor.focus();
-
-				// For small screens (virtual keyboard), always scroll the
-				// focussed editor into view.
-				// Unfortunately we cannot detect virtual keyboards.
-				if ( window.innerWidth < 784 ) {
-					setTimeout( () => {
-						if ( this.editor.removed ) {
-							return;
-						}
-
-						const rootNode = this.editor.getBody();
-						const rootRect = rootNode.getBoundingClientRect();
-						const caretRect = this.editor.selection.getRng().getClientRects()[ 0 ];
-						const offset = caretRect ? caretRect.top - rootRect.top : 0;
-
-						scrollIntoView( rootNode, rootNode.closest( '.edit-post-layout__content' ), {
-							// Give enough room for toolbar. Must be top.
-							// Unfortunately we cannot scroll to bottom as the
-							// virtual keyboard overlaps the window.
-							offsetTop: 100 - offset,
-							alignWithTop: true,
-						} );
-					} );
-				}
 			}
 
 			// Offset = -1 means we should focus the end of the editable
@@ -854,6 +855,15 @@ export default class RichText extends Component {
 		this.editor.setDirty( true );
 	}
 
+	onTinyMCEMount( node ) {
+		if ( scrollPosition && window.innerWidth < 784 ) {
+			scrollIntoView( node, getScrollContainer( node ), {
+				offsetTop: scrollPosition.top,
+				alignWithTop: true,
+			} );
+		}
+	}
+
 	render() {
 		const {
 			tagName: Tagname = 'div',
@@ -913,7 +923,7 @@ export default class RichText extends Component {
 					{ ...ariaProps }
 					className={ className }
 					key={ key }
-					scrollPosition={ scrollPosition }
+					onMount={ this.onTinyMCEMount }
 				/>
 				{ isPlaceholderVisible &&
 					<Tagname
