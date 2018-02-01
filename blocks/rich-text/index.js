@@ -16,6 +16,7 @@ import {
 } from 'lodash';
 import { nodeListToReact } from 'dom-react';
 import 'element-closest';
+import scrollIntoView from 'dom-scroll-into-view';
 
 /**
  * WordPress dependencies
@@ -36,6 +37,8 @@ import patterns from './patterns';
 import { EVENTS } from './constants';
 
 const { BACKSPACE, DELETE, ENTER } = keycodes;
+
+let scrollPosition;
 
 function createTinyMCEElement( type, props, ...children ) {
 	if ( props[ 'data-mce-bogus' ] === 'all' ) {
@@ -555,6 +558,8 @@ export default class RichText extends Component {
 		// If we click shift+Enter on inline RichTexts, we avoid creating two contenteditables
 		// We also split the content and call the onSplit prop if provided.
 		if ( event.keyCode === ENTER ) {
+			scrollPosition = this.editor.getBody().getBoundingClientRect();
+
 			if ( this.props.multiline ) {
 				if ( ! this.props.onSplit ) {
 					return;
@@ -741,6 +746,20 @@ export default class RichText extends Component {
 		if ( focus ) {
 			if ( ! isActive ) {
 				this.editor.focus();
+
+				// For small screens (virtual keyboard), always scroll the
+				// focussed editor into view.
+				// Unfortunately we cannot detect virtual keyboards.
+				if ( window.innerWidth < 784 ) {
+					const rootNode = this.editor.getBody();
+
+					scrollIntoView( rootNode, rootNode.closest( '.edit-post-layout__content' ), {
+						// Give enough room for toolbar. Must be top.
+						// Unfortunately we cannot scroll to bottom as the
+						// virtual keyboard overlaps the window.
+						offsetTop: 100,
+					} );
+				}
 			}
 
 			// Offset = -1 means we should focus the end of the editable
@@ -884,6 +903,7 @@ export default class RichText extends Component {
 					{ ...ariaProps }
 					className={ className }
 					key={ key }
+					scrollPosition={ scrollPosition }
 				/>
 				{ isPlaceholderVisible &&
 					<Tagname

@@ -17,6 +17,15 @@ import { diffAriaProps, pickAriaProps } from './aria';
 
 export default class TinyMCE extends Component {
 	componentDidMount() {
+		if ( this.props.scrollPosition && window.innerWidth < 784 ) {
+			const scrollContainer = this.editorNode.closest( '.edit-post-layout__content' );
+
+			scrollContainer.closest( '.edit-post-layout__content' ).scrollTop =
+				scrollContainer.scrollTop +
+				this.editorNode.getBoundingClientRect().top -
+				this.props.scrollPosition.top;
+		}
+
 		this.initialize();
 	}
 
