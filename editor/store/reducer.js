@@ -363,7 +363,6 @@ export function blockSelection( state = {
 	focus: null,
 	isMultiSelecting: false,
 	isEnabled: true,
-	next: null,
 }, action ) {
 	switch ( action.type ) {
 		case 'CLEAR_SELECTED_BLOCK':
@@ -422,13 +421,14 @@ export function blockSelection( state = {
 				start: action.uid,
 				end: action.uid,
 				focus: action.config || {},
-				next: null,
 			};
 		case 'INSERT_BLOCKS':
 			return {
 				...state,
-				// We must wait for Editable to initialise.
-				next: action.blocks[ 0 ].uid,
+				start: action.blocks[ 0 ].uid,
+				end: action.blocks[ 0 ].uid,
+				focus: {},
+				isMultiSelecting: false,
 			};
 		case 'REPLACE_BLOCKS':
 			if ( ! action.blocks || ! action.blocks.length || action.uids.indexOf( state.start ) === -1 ) {

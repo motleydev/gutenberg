@@ -779,18 +779,6 @@ export function getBlockFocus( state, uid ) {
 }
 
 /**
- * Returns true if the specified block should focus next.
- *
- * @param {Object} state Global application state.
- * @param {string} uid   Block unique ID.
- *
- * @returns {boolean} Whether the block should focus next.
- */
-export function shouldBlockFocusNext( state, uid ) {
-	return state.blockSelection.next === uid;
-}
-
-/**
  * Whether in the process of multi-selecting or not.
  *
  * @param {Object} state Global application state.

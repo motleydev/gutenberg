@@ -64,7 +64,6 @@ import {
 	isSelectionEnabled,
 	isTyping,
 	getBlockMode,
-	shouldBlockFocusNext,
 } from '../../store/selectors';
 
 const { BACKSPACE, ESCAPE, DELETE, ENTER, UP, RIGHT, DOWN, LEFT } = keycodes;
@@ -436,7 +435,7 @@ export class BlockListBlock extends Component {
 						{ isValid && mode === 'visual' && (
 							<BlockEdit
 								name={ blockName }
-								focus={ focus || this.props.shouldFocusNext }
+								focus={ focus }
 								attributes={ block.attributes }
 								setAttributes={ this.setAttributes }
 								insertBlocksAfter={ isLocked ? undefined : this.insertBlocksAfter }
@@ -480,7 +479,6 @@ const mapStateToProps = ( state, { uid } ) => ( {
 	isFirstMultiSelected: isFirstMultiSelectedBlock( state, uid ),
 	isHovered: isBlockHovered( state, uid ) && ! isMultiSelecting( state ),
 	focus: getBlockFocus( state, uid ),
-	shouldFocusNext: shouldBlockFocusNext( state, uid ),
 	isTyping: isTyping( state ),
 	order: getBlockIndex( state, uid ),
 	meta: getEditedPostAttribute( state, 'meta' ),
