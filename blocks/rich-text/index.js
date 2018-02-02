@@ -38,6 +38,9 @@ import { EVENTS } from './constants';
 
 const { BACKSPACE, DELETE, ENTER } = keycodes;
 
+/**
+ * Holds the rectangle of the root node, to use across instances when needed.
+ */
 let scrollPosition;
 
 function createTinyMCEElement( type, props, ...children ) {
@@ -216,11 +219,10 @@ export default class RichText extends Component {
 	}
 
 	onFocus() {
-		// For small screens (virtual keyboard), always scroll the
-		// focussed editor into view.
-		// Unfortunately we cannot detect virtual keyboards.
+		// For small screens (virtual keyboard), always scroll the focussed
+		// editor into view. Unfortunately we cannot detect virtual keyboards.
 		if ( window.innerWidth < 784 ) {
-			// Prevent moving before click/touch finished.
+			// Do not scroll until click/touch finished.
 			setTimeout( () => {
 				if ( this.editor.removed ) {
 					return;
@@ -616,7 +618,9 @@ export default class RichText extends Component {
 				if ( event.shiftKey || ! this.props.onSplit ) {
 					this.editor.execCommand( 'InsertLineBreak', false, event );
 				} else {
-					// For small screens, save the scroll position for the next block.
+					// For small screens, save the root node rectangle so it can
+					// the position can be scrolled to in the next focussed
+					// instance.
 					if ( window.innerWidth < 784 ) {
 						scrollPosition = this.editor.getBody().getBoundingClientRect();
 					}
@@ -860,6 +864,8 @@ export default class RichText extends Component {
 	}
 
 	onTinyMCEMount( node ) {
+		// When a new instance is created, scroll the root node into the
+		// position of the root node that captured ENTER.
 		if ( scrollPosition && window.innerWidth < 784 ) {
 			scrollIntoView( node, getScrollContainer( node ), {
 				offsetTop: scrollPosition.top,
