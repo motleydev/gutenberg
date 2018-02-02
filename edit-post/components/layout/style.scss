@@ -70,6 +70,7 @@
 
 .edit-post-layout__content {
 	position: relative;
+	// Pad the scroll box so content on the bottom can be scrolled up.
 	padding-bottom: 100vh;
 
 	// on mobile the main content area has to scroll

@@ -6,8 +6,8 @@
  * @returns {?Element} Scrollable container node, if found.
  */
 export function getScrollContainer( node ) {
-	if ( ! node ) {
-		return;
+	if ( ! node || node === document.body ) {
+		return window;
 	}
 
 	// Scrollable if scrollable height exceeds displayed...
@@ -15,7 +15,7 @@ export function getScrollContainer( node ) {
 		// ...except when overflow is defined to be hidden or visible
 		const { overflowY } = window.getComputedStyle( node );
 		if ( /(auto|scroll)/.test( overflowY ) ) {
-			return node === document.body ? window : node;
+			return node;
 		}
 	}
 
