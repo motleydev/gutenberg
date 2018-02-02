@@ -220,6 +220,7 @@ export default class RichText extends Component {
 		// focussed editor into view.
 		// Unfortunately we cannot detect virtual keyboards.
 		if ( window.innerWidth < 784 ) {
+			// Prevent moving before click/touch finished.
 			setTimeout( () => {
 				if ( this.editor.removed ) {
 					return;
@@ -230,7 +231,7 @@ export default class RichText extends Component {
 				const caretRect = this.editor.selection.getRng().getClientRects()[ 0 ];
 				const offset = caretRect ? caretRect.top - rootRect.top : 0;
 
-				scrollIntoView( rootNode, rootNode.closest( '.edit-post-layout__content' ), {
+				scrollIntoView( rootNode, getScrollContainer( rootNode ), {
 					// Give enough room for toolbar. Must be top.
 					// Unfortunately we cannot scroll to bottom as the
 					// virtual keyboard overlaps the window.
@@ -583,8 +584,6 @@ export default class RichText extends Component {
 		// If we click shift+Enter on inline RichTexts, we avoid creating two contenteditables
 		// We also split the content and call the onSplit prop if provided.
 		if ( event.keyCode === ENTER ) {
-			scrollPosition = this.editor.getBody().getBoundingClientRect();
-
 			if ( this.props.multiline ) {
 				if ( ! this.props.onSplit ) {
 					return;
@@ -617,6 +616,11 @@ export default class RichText extends Component {
 				if ( event.shiftKey || ! this.props.onSplit ) {
 					this.editor.execCommand( 'InsertLineBreak', false, event );
 				} else {
+					// For small screens, save the scroll position for the next block.
+					if ( window.innerWidth < 784 ) {
+						scrollPosition = this.editor.getBody().getBoundingClientRect();
+					}
+
 					this.splitContent();
 				}
 			}
